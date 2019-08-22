@@ -1,0 +1,3 @@
+/data1/C/torchlib_learn/build/CMakeFiles/rebuild_cache.dir
+/data1/C/torchlib_learn/build/CMakeFiles/edit_cache.dir
+/data1/C/torchlib_learn/build/CMakeFiles/example-app.dir
