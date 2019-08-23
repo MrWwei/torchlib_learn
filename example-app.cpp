@@ -32,6 +32,8 @@ int main(int argc, const char* argv[]) {
   //std::cout << img_float.at<cv::Vec3f>(56,34)[1] << std::endl;
   auto img_tensor = torch::from_blob(img_float.data, {1, 224, 224, 3});
   // torch::Tensor img_tensor = batch.data.to(device);
+  // 转化格式，opencv读取的图像矩阵存储形式：H x W x C, 
+  // 但是pytorch中 Tensor的存储为：N x C x H x W, 因此需要进行变换，就是np.transpose()操作，这里使用tensor.permut()实现，效果是一样的。
   img_tensor = img_tensor.permute({0,3,1,2});
   img_tensor[0][0] = img_tensor[0][0].sub_(0.485).div_(0.229);
   img_tensor[0][1] = img_tensor[0][1].sub_(0.456).div_(0.224);
@@ -47,5 +49,28 @@ int main(int argc, const char* argv[]) {
 
   // Execute the model and turn its output into a tensor.
   at::Tensor output = module.forward(inputs).toTensor();
-  std::cout << output.slice(/*dim=*/1, /*start=*/0, /*end=*/5) << '\n';
+  std::cout << output.slice(/*dim=*/1, /*start=*/0, /*end=*/10) << '\n';
+
+  // Load labels
+  std::string label_file = argv[3];
+  std::ifstream rf(label_file.c_str());
+  CHECK(rf) << "Unable to open file " << label_file;
+  std::string line;
+  std::vector<std::string> labels;
+  while (std::getline(rf, line))
+    labels.push_back(line);
+
+  // print predicted top-5 labels
+  std::tuple<torch::Tensor,torch::Tensor> result = output.sort(-1, true);
+  torch::Tensor top_scores = std::get<0>(result)[0];
+  torch::Tensor top_idxs = std::get<1>(result)[0].toType(torch::kInt32);
+  
+  auto top_scores_a = top_scores.accessor<float,1>();
+  auto top_idxs_a = top_idxs.accessor<int,1>();
+
+  for (int i = 0; i < 5; ++i) {
+    int idx = top_idxs_a[i];
+    std::cout << "top-" << i+1 << " label: ";
+    std::cout << labels[idx] << ", score: " << top_scores_a[i] << std::endl;
+  }
 }
